@@ -1,0 +1,15 @@
+version: "3.8"
+services:
+  postgres-actix:
+    image: postgres
+    volumes:
+      - postgres-actix-vol:/var/lib/postgresql/data
+    ports: 
+      - 5432:5432
+    restart: always
+    environment:
+      POSTGRES_DB: actix_database
+      POSTGRES_USER: actix_username
+      POSTGRES_PASSWORD: actix_password
+volumes:
+  postgres-actix-vol:
