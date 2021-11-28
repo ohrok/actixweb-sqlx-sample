@@ -1,4 +1,5 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer, Responder};
+use anyhow::Result;
 use dotenv::dotenv;
 use log::info;
 use sqlx::postgres::PgPoolOptions;
@@ -9,7 +10,7 @@ async fn hello() -> impl Responder {
 }
 
 #[actix_web::main]
-async fn main() -> Result<(), sqlx::Error> {
+async fn main() -> Result<()> {
     dotenv().ok();
     env_logger::init();
 
