@@ -2,7 +2,7 @@ use actix_web::{middleware, web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use dotenv::dotenv;
 use log::info;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::postgres::PgPool;
 use std::env;
 
 async fn hello() -> impl Responder {
@@ -22,10 +22,7 @@ async fn main() -> Result<()> {
         .expect("PORT should be a u16");
 
     info!("using postgresql database at: {}", &database_url);
-    let db_pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await?;
+    let db_pool = PgPool::connect(&database_url).await?;
 
     let server = HttpServer::new(move || {
         App::new()
