@@ -1,4 +1,5 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer, Responder};
+use dotenv::dotenv;
 use log::info;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
@@ -9,13 +10,20 @@ async fn hello() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> Result<(), sqlx::Error> {
-    env::set_var("RUST_LOG", "info");
+    dotenv().ok();
     env_logger::init();
 
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
+    let host = env::var("HOST").expect("HOST is not set in .env file");
+    let port = env::var("PORT")
+        .expect("PORT is not set in .env file")
+        .parse::<u16>()
+        .expect("PORT should be a u16");
+
+    info!("using postgresql database at: {}", &database_url);
     let db_pool = PgPoolOptions::new()
         .max_connections(5)
-        // TODO: use environment variables.
-        .connect("postgres://actix_username:actix_password@localhost:5432/actix_database")
+        .connect(&database_url)
         .await?;
 
     let server = HttpServer::new(move || {
@@ -24,7 +32,7 @@ async fn main() -> Result<(), sqlx::Error> {
             .wrap(middleware::Logger::default())
             .route("/", web::get().to(hello))
     })
-    .bind("127.0.0.1:8080")?; // TODO: use environment variables.
+    .bind((host, port))?;
 
     info!("Starting server");
     server.run().await?;
