@@ -2,7 +2,7 @@ use actix_web::{middleware, web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use dotenv::dotenv;
 use log::info;
-use sqlx::postgres::PgPool;
+use sqlx::PgPool;
 use std::env;
 
 mod user;
