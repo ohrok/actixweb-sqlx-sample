@@ -5,6 +5,8 @@ use log::info;
 use sqlx::postgres::PgPool;
 use std::env;
 
+mod user;
+
 async fn hello() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }
@@ -29,6 +31,7 @@ async fn main() -> Result<()> {
             .data(db_pool.clone())
             .wrap(middleware::Logger::default())
             .route("/", web::get().to(hello))
+            .configure(user::init) // init user routes
     })
     .bind((host, port))?;
 
