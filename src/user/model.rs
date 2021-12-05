@@ -49,4 +49,40 @@ impl User {
 
         Ok(users)
     }
+
+    pub async fn create(user: UserRequest, pool: &PgPool) -> Result<User> {
+        let mut tx = pool.begin().await?;
+        let user_id = Uuid::new_v4();
+
+        sqlx::query!(
+            r#"
+            INSERT INTO users (id, name, username)
+            VALUES ($1, $2, $3)
+            "#,
+            user_id,
+            user.name,
+            user.username,
+        )
+        .execute(&mut tx)
+        .await?;
+
+        let rec = sqlx::query!(
+            r#"
+            SELECT id, name, username
+            FROM users
+            WHERE id = $1
+            "#,
+            user_id,
+        )
+        .fetch_one(&mut tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(User {
+            id: rec.id,
+            name: rec.name,
+            username: rec.username,
+        })
+    }
 }
