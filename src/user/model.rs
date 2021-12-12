@@ -144,4 +144,23 @@ impl User {
         tx.commit().await?;
         Ok(Some(user))
     }
+
+    pub async fn delete(id: Uuid, pool: &PgPool) -> Result<u64> {
+        let mut tx = pool.begin().await?;
+
+        let n_deleted = sqlx::query!(
+            r#"
+            DELETE FROM users
+            WHERE id = $1
+            "#,
+            id,
+        )
+        .execute(&mut tx)
+        .await?
+        .rows_affected();
+
+        tx.commit().await?;
+
+        Ok(n_deleted)
+    }
 }

@@ -1,5 +1,5 @@
 use crate::user::{User, UserRequest};
-use actix_web::{get, post, put, web, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::error;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -8,7 +8,8 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(find_all)
         .service(find)
         .service(create)
-        .service(update);
+        .service(update)
+        .service(delete);
 }
 
 #[get("/users")]
@@ -61,6 +62,25 @@ async fn update(
         Err(err) => {
             error!("error updating user: {}", err);
             HttpResponse::InternalServerError().body("Error trying to update user")
+        }
+    }
+}
+
+#[delete("/users/{id}")]
+async fn delete(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder {
+    let result = User::delete(id.into_inner(), db_pool.get_ref()).await;
+    match result {
+        Ok(rows_deleted) => {
+            if rows_deleted > 0 {
+                let msg = format!("Successfully deleted {} record(s)", rows_deleted);
+                HttpResponse::Ok().body(msg)
+            } else {
+                HttpResponse::NotFound().body("User not found")
+            }
+        }
+        Err(err) => {
+            error!("error deleting user: {}", err);
+            HttpResponse::InternalServerError().body("Error trying to delete user")
         }
     }
 }
