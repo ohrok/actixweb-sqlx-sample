@@ -1,11 +1,14 @@
 use crate::user::{User, UserRequest};
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{get, post, put, web, HttpResponse, Responder};
 use log::error;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 pub fn init(cfg: &mut web::ServiceConfig) {
-    cfg.service(find_all).service(find).service(create);
+    cfg.service(find_all)
+        .service(find)
+        .service(create)
+        .service(update);
 }
 
 #[get("/users")]
@@ -41,6 +44,23 @@ async fn create(user: web::Json<UserRequest>, db_pool: web::Data<PgPool>) -> imp
         Err(err) => {
             error!("error creating user: {}", err);
             HttpResponse::InternalServerError().body("Error trying to create new user")
+        }
+    }
+}
+
+#[put("/users/{id}")]
+async fn update(
+    id: web::Path<Uuid>,
+    user: web::Json<UserRequest>,
+    db_pool: web::Data<PgPool>,
+) -> impl Responder {
+    let result = User::update(id.into_inner(), user.into_inner(), db_pool.get_ref()).await;
+    match result {
+        Ok(Some(user)) => HttpResponse::Ok().json(user),
+        Ok(None) => HttpResponse::NotFound().body("User not found"),
+        Err(err) => {
+            error!("error updating user: {}", err);
+            HttpResponse::InternalServerError().body("Error trying to update user")
         }
     }
 }

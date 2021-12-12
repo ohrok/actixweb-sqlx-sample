@@ -1,7 +1,7 @@
 use actix_web::{Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, PgPool};
+use sqlx::{Done, FromRow, PgPool};
 use uuid::Uuid;
 
 // this struct will use to receive user input
@@ -103,5 +103,45 @@ impl User {
             name: rec.name,
             username: rec.username,
         })
+    }
+
+    pub async fn update(id: Uuid, user: UserRequest, pool: &PgPool) -> Result<Option<User>> {
+        let mut tx = pool.begin().await.unwrap();
+
+        let n = sqlx::query!(
+            r#"
+            UPDATE users 
+            SET name = $1, username = $2
+            WHERE id = $3
+            "#,
+            user.name,
+            user.username,
+            id,
+        )
+        .execute(&mut tx)
+        .await?;
+
+        if n.rows_affected() == 0 {
+            return Ok(None);
+        }
+
+        let user = sqlx::query!(
+            r#"
+            SELECT id, name, username
+            FROM users
+            WHERE id = $1
+            "#,
+            id,
+        )
+        .fetch_one(&mut tx)
+        .await
+        .map(|rec| User {
+            id: rec.id,
+            name: rec.name,
+            username: rec.username,
+        })?;
+
+        tx.commit().await?;
+        Ok(Some(user))
     }
 }
