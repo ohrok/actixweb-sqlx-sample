@@ -106,9 +106,9 @@ impl User {
     }
 
     pub async fn update(id: Uuid, user: UserRequest, pool: &PgPool) -> Result<Option<User>> {
-        let mut tx = pool.begin().await.unwrap();
+        let mut tx = pool.begin().await?;
 
-        let n = sqlx::query!(
+        let n_updated = sqlx::query!(
             r#"
             UPDATE users 
             SET name = $1, username = $2
@@ -119,9 +119,10 @@ impl User {
             id,
         )
         .execute(&mut tx)
-        .await?;
+        .await?
+        .rows_affected();
 
-        if n.rows_affected() == 0 {
+        if n_updated == 0 {
             return Ok(None);
         }
 
