@@ -1,7 +1,7 @@
 use actix_web::{Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, PgPool};
+use sqlx::{Done, FromRow, PgPool};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -106,5 +106,67 @@ impl Post {
             body: rec.body,
             user_id: rec.user_id,
         })
+    }
+
+    pub async fn update(id: Uuid, post: PostRequest, pool: &PgPool) -> Result<Option<Post>> {
+        let mut tx = pool.begin().await?;
+
+        let n_updated = sqlx::query!(
+            r#"
+            UPDATE posts 
+            SET title = $1, body = $2, user_id = $3
+            WHERE id = $4
+            "#,
+            post.title,
+            post.body,
+            post.user_id,
+            id,
+        )
+        .execute(&mut tx)
+        .await?
+        .rows_affected();
+
+        if n_updated == 0 {
+            return Ok(None);
+        }
+
+        let post = sqlx::query!(
+            r#"
+            SELECT id, title, body, user_id
+            FROM posts
+            WHERE id = $1
+            "#,
+            id,
+        )
+        .fetch_one(&mut tx)
+        .await
+        .map(|rec| Post {
+            id: rec.id,
+            title: rec.title,
+            body: rec.body,
+            user_id: rec.user_id,
+        })?;
+
+        tx.commit().await?;
+        Ok(Some(post))
+    }
+
+    pub async fn delete(id: Uuid, pool: &PgPool) -> Result<u64> {
+        let mut tx = pool.begin().await?;
+
+        let n_deleted = sqlx::query!(
+            r#"
+            DELETE FROM posts
+            WHERE id = $1
+            "#,
+            id,
+        )
+        .execute(&mut tx)
+        .await?
+        .rows_affected();
+
+        tx.commit().await?;
+
+        Ok(n_deleted)
     }
 }
