@@ -5,6 +5,7 @@ use log::info;
 use sqlx::PgPool;
 use std::env;
 
+mod post;
 mod user;
 
 async fn hello() -> impl Responder {
@@ -32,6 +33,7 @@ async fn main() -> Result<()> {
             .wrap(middleware::Logger::default())
             .route("/", web::get().to(hello))
             .configure(user::init) // init user routes
+            .configure(post::init)
     })
     .bind((host, port))?;
 
