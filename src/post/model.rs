@@ -57,7 +57,7 @@ impl Post {
             FROM posts
             WHERE id = $1
             "#,
-            id
+            id,
         )
         .fetch_optional(pool)
         .await?;
@@ -68,5 +68,43 @@ impl Post {
             body: rec.body,
             user_id: rec.user_id,
         }))
+    }
+
+    pub async fn create(post: PostRequest, pool: &PgPool) -> Result<Post> {
+        let mut tx = pool.begin().await?;
+        let post_id = Uuid::new_v4();
+
+        sqlx::query!(
+            r#"
+            INSERT INTO posts (id, title, body, user_id)
+            VALUES ($1, $2, $3, $4)
+            "#,
+            post_id,
+            post.title,
+            post.body,
+            post.user_id,
+        )
+        .execute(&mut tx)
+        .await?;
+
+        let rec = sqlx::query!(
+            r#"
+            SELECT id, title, body, user_id
+            FROM posts
+            WHERE id = $1
+            "#,
+            post_id,
+        )
+        .fetch_one(&mut tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(Post {
+            id: rec.id,
+            title: rec.title,
+            body: rec.body,
+            user_id: rec.user_id,
+        })
     }
 }

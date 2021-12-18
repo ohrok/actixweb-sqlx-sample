@@ -1,11 +1,11 @@
-use crate::post::Post;
-use actix_web::{get, web, HttpResponse, Responder};
+use crate::post::{Post, PostRequest};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use log::error;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 pub fn init(cfg: &mut web::ServiceConfig) {
-    cfg.service(find_all).service(find);
+    cfg.service(find_all).service(find).service(create);
 }
 
 #[get("/posts")]
@@ -29,6 +29,18 @@ async fn find(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder
         Err(err) => {
             error!("error fetching post: {}", err);
             HttpResponse::InternalServerError().body("Error trying to read post from database")
+        }
+    }
+}
+
+#[post("/posts")]
+async fn create(user: web::Json<PostRequest>, db_pool: web::Data<PgPool>) -> impl Responder {
+    let result = Post::create(user.into_inner(), db_pool.get_ref()).await;
+    match result {
+        Ok(post) => HttpResponse::Ok().json(post),
+        Err(err) => {
+            error!("error creating post: {}", err);
+            HttpResponse::InternalServerError().body("Error trying to create new post")
         }
     }
 }
