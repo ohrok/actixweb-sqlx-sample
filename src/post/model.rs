@@ -190,4 +190,27 @@ impl Post {
             username: rec.username,
         }))
     }
+
+    pub async fn find_by_user(user_id: Uuid, pool: &PgPool) -> Result<Vec<Post>> {
+        let posts = sqlx::query!(
+            r#"
+            SELECT id, title, body, user_id
+            FROM posts
+            WHERE user_id = $1
+            "#,
+            user_id,
+        )
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|rec| Post {
+            id: rec.id,
+            title: rec.title,
+            body: rec.body,
+            user_id: rec.user_id,
+        })
+        .collect();
+
+        Ok(posts)
+    }
 }

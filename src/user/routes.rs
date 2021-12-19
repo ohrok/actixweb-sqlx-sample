@@ -1,3 +1,4 @@
+use crate::post::Post;
 use crate::user::{User, UserRequest};
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::error;
@@ -9,7 +10,8 @@ pub fn init(cfg: &mut web::ServiceConfig) {
         .service(find)
         .service(create)
         .service(update)
-        .service(delete);
+        .service(delete)
+        .service(find_posts);
 }
 
 #[get("/users")]
@@ -81,6 +83,19 @@ async fn delete(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Respond
         Err(err) => {
             error!("error deleting user: {}", err);
             HttpResponse::InternalServerError().body("Error trying to delete user")
+        }
+    }
+}
+
+#[get("/users/{id}/posts")]
+async fn find_posts(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder {
+    let result = Post::find_by_user(id.into_inner(), db_pool.get_ref()).await;
+    match result {
+        Ok(posts) => HttpResponse::Ok().json(posts),
+        Err(err) => {
+            error!("error fetching posts by this user: {}", err);
+            HttpResponse::InternalServerError()
+                .body("Error trying to read posts by this user from database")
         }
     }
 }
