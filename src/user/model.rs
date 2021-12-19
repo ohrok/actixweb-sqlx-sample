@@ -57,7 +57,7 @@ impl User {
             FROM users
             WHERE id = $1
             "#,
-            id
+            id,
         )
         .fetch_optional(pool)
         .await?;
@@ -163,5 +163,25 @@ impl User {
         tx.commit().await?;
 
         Ok(n_deleted)
+    }
+
+    pub async fn find_by_post(post_id: Uuid, pool: &PgPool) -> Result<Option<User>> {
+        let rec = sqlx::query!(
+            r#"
+            SELECT users.id, users.name, users.username
+            FROM posts inner join users
+            ON posts.user_id = users.id
+            WHERE posts.id = $1
+            "#,
+            post_id,
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(rec.map(|rec| User {
+            id: rec.id,
+            name: rec.name,
+            username: rec.username,
+        }))
     }
 }
