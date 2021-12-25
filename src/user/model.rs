@@ -1,5 +1,6 @@
 use actix_web::{Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
+use bcrypt::{hash, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
 use sqlx::{Done, FromRow, PgPool};
 use uuid::Uuid;
@@ -9,6 +10,7 @@ use uuid::Uuid;
 pub struct UserRequest {
     pub name: String,
     pub username: String,
+    pub password: String,
 }
 
 // this struct will be used to represent database record
@@ -17,6 +19,7 @@ pub struct User {
     pub id: Uuid,
     pub name: String,
     pub username: String,
+    pub password: String,
 }
 
 // implementation of Actix Responder for User struct so we can return User from action handler
@@ -33,7 +36,7 @@ impl User {
     pub async fn find_all(pool: &PgPool) -> Result<Vec<User>> {
         let users = sqlx::query!(
             r#"
-            SELECT id, name, username
+            SELECT id, name, username, password
             FROM users
             "#
         )
@@ -44,6 +47,7 @@ impl User {
             id: rec.id,
             name: rec.name,
             username: rec.username,
+            password: rec.password,
         })
         .collect();
 
@@ -53,7 +57,7 @@ impl User {
     pub async fn find_by_id(id: Uuid, pool: &PgPool) -> Result<Option<User>> {
         let rec = sqlx::query!(
             r#"
-            SELECT id, name, username
+            SELECT id, name, username, password
             FROM users
             WHERE id = $1
             "#,
@@ -66,28 +70,31 @@ impl User {
             id: rec.id,
             name: rec.name,
             username: rec.username,
+            password: rec.password,
         }))
     }
 
     pub async fn create(user: UserRequest, pool: &PgPool) -> Result<User> {
         let mut tx = pool.begin().await?;
         let user_id = Uuid::new_v4();
+        let hashed_password = hash(user.password, DEFAULT_COST)?;
 
         sqlx::query!(
             r#"
-            INSERT INTO users (id, name, username)
-            VALUES ($1, $2, $3)
+            INSERT INTO users (id, name, username, password)
+            VALUES ($1, $2, $3, $4)
             "#,
             user_id,
             user.name,
             user.username,
+            hashed_password,
         )
         .execute(&mut tx)
         .await?;
 
         let rec = sqlx::query!(
             r#"
-            SELECT id, name, username
+            SELECT id, name, username, password
             FROM users
             WHERE id = $1
             "#,
@@ -102,20 +109,23 @@ impl User {
             id: rec.id,
             name: rec.name,
             username: rec.username,
+            password: rec.password,
         })
     }
 
     pub async fn update(id: Uuid, user: UserRequest, pool: &PgPool) -> Result<Option<User>> {
         let mut tx = pool.begin().await?;
+        let hashed_password = hash(user.password, DEFAULT_COST)?;
 
         let n_updated = sqlx::query!(
             r#"
             UPDATE users 
-            SET name = $1, username = $2
-            WHERE id = $3
+            SET name = $1, username = $2, password = $3
+            WHERE id = $4
             "#,
             user.name,
             user.username,
+            hashed_password,
             id,
         )
         .execute(&mut tx)
@@ -128,7 +138,7 @@ impl User {
 
         let user = sqlx::query!(
             r#"
-            SELECT id, name, username
+            SELECT id, name, username, password
             FROM users
             WHERE id = $1
             "#,
@@ -140,6 +150,7 @@ impl User {
             id: rec.id,
             name: rec.name,
             username: rec.username,
+            password: rec.password,
         })?;
 
         tx.commit().await?;
@@ -168,7 +179,7 @@ impl User {
     pub async fn find_by_post(post_id: Uuid, pool: &PgPool) -> Result<Option<User>> {
         let rec = sqlx::query!(
             r#"
-            SELECT users.id, users.name, users.username
+            SELECT users.id, users.name, users.username, users.password
             FROM posts inner join users
             ON posts.user_id = users.id
             WHERE posts.id = $1
@@ -182,6 +193,7 @@ impl User {
             id: rec.id,
             name: rec.name,
             username: rec.username,
+            password: rec.password,
         }))
     }
 }
