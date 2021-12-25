@@ -22,13 +22,31 @@ pub struct User {
     pub password: String,
 }
 
-// implementation of Actix Responder for User struct so we can return User from action handler
-impl Responder for User {
+// hide password
+#[derive(Serialize)]
+pub struct UserPublic {
+    pub id: Uuid,
+    pub name: String,
+    pub username: String,
+}
+
+// implementation of Actix Responder for UserPublic struct so we can return UserPublic from action handler
+impl Responder for UserPublic {
     type Error = Error;
     type Future = HttpResponse;
 
     fn respond_to(self, _req: &HttpRequest) -> Self::Future {
         HttpResponse::Ok().json(&self)
+    }
+}
+
+impl UserPublic {
+    pub fn from(user: User) -> UserPublic {
+        UserPublic {
+            id: user.id,
+            name: user.name,
+            username: user.username,
+        }
     }
 }
 

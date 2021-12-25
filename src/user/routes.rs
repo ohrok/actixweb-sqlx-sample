@@ -1,5 +1,5 @@
 use crate::post::Post;
-use crate::user::{User, UserRequest};
+use crate::user::{User, UserPublic, UserRequest};
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::error;
 use sqlx::PgPool;
@@ -18,7 +18,13 @@ pub fn init(cfg: &mut web::ServiceConfig) {
 async fn find_all(db_pool: web::Data<PgPool>) -> impl Responder {
     let result = User::find_all(db_pool.get_ref()).await;
     match result {
-        Ok(users) => HttpResponse::Ok().json(users),
+        Ok(users) => {
+            let users = users
+                .into_iter()
+                .map(|user| UserPublic::from(user))
+                .collect::<Vec<UserPublic>>();
+            HttpResponse::Ok().json(users)
+        }
         Err(err) => {
             error!("error fetching users: {}", err);
             HttpResponse::InternalServerError().body("Error trying to read all users from database")
@@ -30,7 +36,7 @@ async fn find_all(db_pool: web::Data<PgPool>) -> impl Responder {
 async fn find(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder {
     let result = User::find_by_id(id.into_inner(), db_pool.get_ref()).await;
     match result {
-        Ok(Some(user)) => HttpResponse::Ok().json(user),
+        Ok(Some(user)) => HttpResponse::Ok().json(UserPublic::from(user)),
         Ok(None) => HttpResponse::NotFound().body("User not found"),
         Err(err) => {
             error!("error fetching user: {}", err);
@@ -43,7 +49,7 @@ async fn find(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder
 async fn create(user: web::Json<UserRequest>, db_pool: web::Data<PgPool>) -> impl Responder {
     let result = User::create(user.into_inner(), db_pool.get_ref()).await;
     match result {
-        Ok(user) => HttpResponse::Ok().json(user),
+        Ok(user) => HttpResponse::Ok().json(UserPublic::from(user)),
         Err(err) => {
             error!("error creating user: {}", err);
             HttpResponse::InternalServerError().body("Error trying to create new user")
@@ -59,7 +65,7 @@ async fn update(
 ) -> impl Responder {
     let result = User::update(id.into_inner(), user.into_inner(), db_pool.get_ref()).await;
     match result {
-        Ok(Some(user)) => HttpResponse::Ok().json(user),
+        Ok(Some(user)) => HttpResponse::Ok().json(UserPublic::from(user)),
         Ok(None) => HttpResponse::NotFound().body("User not found"),
         Err(err) => {
             error!("error updating user: {}", err);

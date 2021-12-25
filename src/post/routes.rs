@@ -1,5 +1,5 @@
 use crate::post::{Post, PostRequest};
-use crate::user::User;
+use crate::user::{User, UserPublic};
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use log::error;
 use sqlx::PgPool;
@@ -91,7 +91,7 @@ async fn delete(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Respond
 async fn find_user(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder {
     let result = User::find_by_post(id.into_inner(), db_pool.get_ref()).await;
     match result {
-        Ok(Some(user)) => HttpResponse::Ok().json(user),
+        Ok(Some(user)) => HttpResponse::Ok().json(UserPublic::from(user)),
         Ok(None) => HttpResponse::NotFound().body("User not found"),
         Err(err) => {
             error!("error fetching user: {}", err);
