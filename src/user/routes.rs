@@ -1,6 +1,8 @@
+use crate::auth;
 use crate::post::Post;
 use crate::user::{User, UserPublic, UserRequest};
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
+use actix_web_httpauth::extractors::basic::BasicAuth;
 use log::error;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -11,7 +13,8 @@ pub fn init(cfg: &mut web::ServiceConfig) {
         .service(create)
         .service(update)
         .service(delete)
-        .service(find_posts);
+        .service(find_posts)
+        .service(login);
 }
 
 #[get("/users")]
@@ -102,6 +105,18 @@ async fn find_posts(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Res
             error!("error fetching posts by this user: {}", err);
             HttpResponse::InternalServerError()
                 .body("Error trying to read posts by this user from database")
+        }
+    }
+}
+
+#[post("/users/login")]
+async fn login(credentials: BasicAuth, db_pool: web::Data<PgPool>) -> impl Responder {
+    let result = auth::basic_auth_validator(credentials, db_pool.get_ref()).await;
+    match result {
+        Ok(user) => HttpResponse::Ok().json(UserPublic::from(user)),
+        Err(err) => {
+            error!("error fetching user: {}", err);
+            HttpResponse::InternalServerError().body("Error trying to read user from database")
         }
     }
 }

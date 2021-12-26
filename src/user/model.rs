@@ -92,6 +92,26 @@ impl User {
         }))
     }
 
+    pub async fn find_by_username(username: &str, pool: &PgPool) -> Result<Option<User>> {
+        let rec = sqlx::query!(
+            r#"
+            SELECT id, name, username, password
+            FROM users
+            WHERE username = $1
+            "#,
+            username,
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(rec.map(|rec| User {
+            id: rec.id,
+            name: rec.name,
+            username: rec.username,
+            password: rec.password,
+        }))
+    }
+
     pub async fn create(user: UserRequest, pool: &PgPool) -> Result<User> {
         let mut tx = pool.begin().await?;
         let user_id = Uuid::new_v4();

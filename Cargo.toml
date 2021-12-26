@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 actix-web = "3"
+actix-web-httpauth = "0.5.1"
 sqlx = { version = "0.4", features = [ "runtime-actix-native-tls" , "postgres", "uuid" ] }
 log = "0.4.8"
 env_logger = "0.9.0"
