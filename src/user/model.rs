@@ -40,8 +40,8 @@ impl Responder for UserPublic {
     }
 }
 
-impl UserPublic {
-    pub fn from(user: User) -> UserPublic {
+impl From<User> for UserPublic {
+    fn from(user: User) -> Self {
         UserPublic {
             id: user.id,
             name: user.name,
