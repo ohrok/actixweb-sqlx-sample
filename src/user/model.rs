@@ -1,6 +1,8 @@
 use actix_web::{Error, HttpRequest, HttpResponse, Responder};
+use actix_web_httpauth::extractors::basic::{BasicAuth, Config};
+use actix_web_httpauth::extractors::AuthenticationError;
 use anyhow::Result;
-use bcrypt::{hash, DEFAULT_COST};
+use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
 use sqlx::{Done, FromRow, PgPool};
 use uuid::Uuid;
@@ -233,5 +235,26 @@ impl User {
             username: rec.username,
             password: rec.password,
         }))
+    }
+
+    pub async fn basic_auth(credentials: BasicAuth, pool: &PgPool) -> Result<User, Error> {
+        let password = match credentials.password() {
+            Some(password) => password,
+            None => {
+                return Err(AuthenticationError::from(Config::default()).into());
+            }
+        };
+        let result = Self::find_by_username(credentials.user_id(), pool).await;
+        match result {
+            Ok(Some(user)) => {
+                let valid = verify(password.as_bytes(), &user.password).unwrap_or(false);
+                if valid {
+                    Ok(user)
+                } else {
+                    Err(AuthenticationError::from(Config::default()).into())
+                }
+            }
+            _ => Err(AuthenticationError::from(Config::default()).into()),
+        }
     }
 }

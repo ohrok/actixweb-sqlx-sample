@@ -5,7 +5,6 @@ use log::info;
 use sqlx::PgPool;
 use std::env;
 
-mod auth;
 mod post;
 mod user;
 
