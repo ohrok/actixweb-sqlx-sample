@@ -1,22 +1,27 @@
 use crate::user::User;
-use actix_web_httpauth::extractors::basic::BasicAuth;
-use anyhow::{anyhow, Result};
+use actix_web::Error;
+use actix_web_httpauth::extractors::basic::{BasicAuth, Config};
+use actix_web_httpauth::extractors::AuthenticationError;
 use bcrypt::verify;
 use sqlx::PgPool;
 
-pub async fn basic_auth_validator(credentials: BasicAuth, pool: &PgPool) -> Result<User> {
-    let result = User::find_by_username(credentials.user_id(), pool).await?;
+pub async fn basic_auth_validator(credentials: BasicAuth, pool: &PgPool) -> Result<User, Error> {
+    let password = match credentials.password() {
+        Some(password) => password,
+        None => {
+            return Err(AuthenticationError::from(Config::default()).into());
+        }
+    };
+    let result = User::find_by_username(credentials.user_id(), pool).await;
     match result {
-        Some(user) => {
-            // TODO: unwrap()を使わずに適切なエラーハンドリングをする
-            let valid = verify(credentials.password().unwrap().as_bytes(), &user.password);
-            if valid.unwrap() {
+        Ok(Some(user)) => {
+            let valid = verify(password.as_bytes(), &user.password).unwrap_or(false);
+            if valid {
                 Ok(user)
             } else {
-                // TODO: actix_web_httpauth::extractors::AuthenticationErrorを使う
-                Err(anyhow!("authentication error"))
+                Err(AuthenticationError::from(Config::default()).into())
             }
         }
-        None => Err(anyhow!("authentication error")),
+        _ => Err(AuthenticationError::from(Config::default()).into()),
     }
 }

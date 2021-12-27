@@ -115,8 +115,8 @@ async fn login(credentials: BasicAuth, db_pool: web::Data<PgPool>) -> impl Respo
     match result {
         Ok(user) => HttpResponse::Ok().json(UserPublic::from(user)),
         Err(err) => {
-            error!("error fetching user: {}", err);
-            HttpResponse::InternalServerError().body("Error trying to read user from database")
+            error!("error authenticating user: {}", err);
+            HttpResponse::InternalServerError().body("Error trying to authenticate user")
         }
     }
 }
