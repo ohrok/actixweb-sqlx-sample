@@ -5,7 +5,7 @@ use actix_web_httpauth::extractors::AuthenticationError;
 use bcrypt::verify;
 use sqlx::PgPool;
 
-pub async fn basic_auth_validator(credentials: BasicAuth, pool: &PgPool) -> Result<User, Error> {
+pub async fn validate_basic_auth(credentials: BasicAuth, pool: &PgPool) -> Result<User, Error> {
     let password = match credentials.password() {
         Some(password) => password,
         None => {

@@ -111,7 +111,7 @@ async fn find_posts(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Res
 
 #[post("/users/login")]
 async fn login(credentials: BasicAuth, db_pool: web::Data<PgPool>) -> impl Responder {
-    let result = auth::basic_auth_validator(credentials, db_pool.get_ref()).await;
+    let result = auth::validate_basic_auth(credentials, db_pool.get_ref()).await;
     match result {
         Ok(user) => HttpResponse::Ok().json(UserPublic::from(user)),
         Err(err) => {
