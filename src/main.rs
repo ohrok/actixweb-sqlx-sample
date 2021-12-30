@@ -7,6 +7,7 @@ use std::env;
 
 mod auth;
 mod post;
+mod token;
 mod user;
 
 async fn hello() -> impl Responder {

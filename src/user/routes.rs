@@ -1,5 +1,6 @@
 use crate::auth;
 use crate::post::Post;
+use crate::token::Token;
 use crate::user::{User, UserPublic, UserRequest};
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use actix_web_httpauth::extractors::basic::BasicAuth;
@@ -111,12 +112,21 @@ async fn find_posts(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Res
 
 #[post("/users/login")]
 async fn login(credentials: BasicAuth, db_pool: web::Data<PgPool>) -> impl Responder {
-    let result = auth::validate_basic_auth(credentials, db_pool.get_ref()).await;
-    match result {
-        Ok(user) => HttpResponse::Ok().json(UserPublic::from(user)),
+    let user = match auth::validate_basic_auth(credentials, db_pool.get_ref()).await {
+        Ok(user) => user,
+        // TODO: 401エラー以外も返すようにする
         Err(err) => {
-            error!("error authenticating user: {}", err);
-            HttpResponse::InternalServerError().body("Error trying to authenticate user")
+            error!("Unauthorized error: {}", err);
+            return HttpResponse::from_error(err);
+        }
+    };
+
+    let token = Token::create(&user, db_pool.get_ref()).await;
+    match token {
+        Ok(token) => HttpResponse::Ok().json(token),
+        Err(err) => {
+            error!("error creating token: {}", err);
+            HttpResponse::InternalServerError().body("Error trying to create new token")
         }
     }
 }
