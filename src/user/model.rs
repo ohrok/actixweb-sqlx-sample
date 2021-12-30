@@ -113,9 +113,10 @@ impl User {
     }
 
     pub async fn create(user: UserRequest, pool: &PgPool) -> Result<User> {
-        let mut tx = pool.begin().await?;
         let user_id = Uuid::new_v4();
         let hashed_password = hash(user.password, DEFAULT_COST)?;
+
+        let mut tx = pool.begin().await?;
 
         sqlx::query!(
             r#"
@@ -152,8 +153,9 @@ impl User {
     }
 
     pub async fn update(id: Uuid, user: UserRequest, pool: &PgPool) -> Result<Option<User>> {
-        let mut tx = pool.begin().await?;
         let hashed_password = hash(user.password, DEFAULT_COST)?;
+
+        let mut tx = pool.begin().await?;
 
         let n_updated = sqlx::query!(
             r#"
@@ -192,6 +194,7 @@ impl User {
         })?;
 
         tx.commit().await?;
+
         Ok(Some(user))
     }
 

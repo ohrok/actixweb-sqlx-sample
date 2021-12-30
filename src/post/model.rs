@@ -71,8 +71,9 @@ impl Post {
     }
 
     pub async fn create(post: PostRequest, pool: &PgPool) -> Result<Post> {
-        let mut tx = pool.begin().await?;
         let post_id = Uuid::new_v4();
+
+        let mut tx = pool.begin().await?;
 
         sqlx::query!(
             r#"
@@ -148,6 +149,7 @@ impl Post {
         })?;
 
         tx.commit().await?;
+
         Ok(Some(post))
     }
 
