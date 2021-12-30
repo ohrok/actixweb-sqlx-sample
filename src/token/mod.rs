@@ -1,6 +1,7 @@
 use crate::user::User;
 use actix_web::{Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
+use rand::Rng;
 use serde::Serialize;
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
@@ -23,10 +24,10 @@ impl Responder for Token {
 
 impl Token {
     pub fn new(user_id: Uuid) -> Token {
-        // TODO: トークンとしてのvalue生成
+        let random = base64::encode(generate_random_u8s(16));
         Token {
             id: Uuid::new_v4(),
-            value: String::from("token value"),
+            value: random,
             user_id: user_id,
         }
     }
@@ -66,4 +67,13 @@ impl Token {
             user_id: rec.user_id,
         })
     }
+}
+
+fn generate_random_u8s(amount: usize) -> Vec<u8> {
+    let mut v = Vec::new();
+    for _ in 0..amount {
+        let u: u8 = rand::thread_rng().gen();
+        v.push(u)
+    }
+    v
 }
