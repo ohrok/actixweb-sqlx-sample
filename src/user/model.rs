@@ -237,4 +237,25 @@ impl User {
             password: rec.password,
         }))
     }
+
+    pub async fn find_by_token(token_value: &str, pool: &PgPool) -> Result<Option<User>> {
+        let rec = sqlx::query!(
+            r#"
+            SELECT users.id, users.name, users.username, users.password
+            FROM tokens inner join users
+            ON tokens.user_id = users.id
+            WHERE tokens.value = $1
+            "#,
+            token_value,
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(rec.map(|rec| User {
+            id: rec.id,
+            name: rec.name,
+            username: rec.username,
+            password: rec.password,
+        }))
+    }
 }

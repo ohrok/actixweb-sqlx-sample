@@ -1,6 +1,8 @@
+use crate::auth;
 use crate::post::{Post, PostRequest};
 use crate::user::{User, UserPublic};
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
+use actix_web_httpauth::extractors::bearer::BearerAuth;
 use log::error;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -15,7 +17,12 @@ pub fn init(cfg: &mut web::ServiceConfig) {
 }
 
 #[get("/posts")]
-async fn find_all(db_pool: web::Data<PgPool>) -> impl Responder {
+async fn find_all(credentials: BearerAuth, db_pool: web::Data<PgPool>) -> impl Responder {
+    if let Err(err) = auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
+        error!("Unauthorized error: {}", err);
+        return HttpResponse::from_error(err);
+    };
+
     let result = Post::find_all(db_pool.get_ref()).await;
     match result {
         Ok(posts) => HttpResponse::Ok().json(posts),
