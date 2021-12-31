@@ -23,7 +23,7 @@ pub async fn validate_basic_auth(credentials: BasicAuth, pool: &PgPool) -> Resul
                 Err(AuthenticationError::from(BasicConfig::default()).into())
             }
         }
-        _ => Err(AuthenticationError::from(BasicConfig::default()).into()),
+        Ok(None) | Err(_) => Err(AuthenticationError::from(BasicConfig::default()).into()),
     }
 }
 
