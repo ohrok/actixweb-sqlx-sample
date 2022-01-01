@@ -7,12 +7,15 @@ use bcrypt::verify;
 use sqlx::PgPool;
 
 pub async fn validate_basic_auth(credentials: BasicAuth, pool: &PgPool) -> Result<User, Error> {
+    let config = BasicConfig::default();
+
     let password = match credentials.password() {
         Some(password) => password,
         None => {
-            return Err(AuthenticationError::from(BasicConfig::default()).into());
+            return Err(AuthenticationError::from(config).into());
         }
     };
+
     let result = User::find_by_username(credentials.user_id(), pool).await;
     match result {
         Ok(Some(user)) => {
@@ -20,17 +23,18 @@ pub async fn validate_basic_auth(credentials: BasicAuth, pool: &PgPool) -> Resul
             if valid {
                 Ok(user)
             } else {
-                Err(AuthenticationError::from(BasicConfig::default()).into())
+                Err(AuthenticationError::from(config).into())
             }
         }
-        Ok(None) | Err(_) => Err(AuthenticationError::from(BasicConfig::default()).into()),
+        Ok(None) | Err(_) => Err(AuthenticationError::from(config).into()),
     }
 }
 
 pub async fn validate_bearer_auth(credentials: BearerAuth, pool: &PgPool) -> Result<User, Error> {
+    let config = BearerConfig::default();
     let result = User::find_by_token(credentials.token(), pool).await;
     match result {
         Ok(Some(user)) => Ok(user),
-        Ok(None) | Err(_) => Err(AuthenticationError::from(BearerConfig::default()).into()),
+        Ok(None) | Err(_) => Err(AuthenticationError::from(config).into()),
     }
 }
