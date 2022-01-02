@@ -8,7 +8,6 @@ use uuid::Uuid;
 pub struct PostRequest {
     pub title: String,
     pub body: String,
-    pub user_id: Uuid,
 }
 
 #[derive(Serialize, FromRow)]
@@ -70,9 +69,10 @@ impl Post {
         }))
     }
 
-    pub async fn create(post: PostRequest, pool: &PgPool) -> Result<Post> {
-        let mut tx = pool.begin().await?;
+    pub async fn create(post: PostRequest, user_id: Uuid, pool: &PgPool) -> Result<Post> {
         let post_id = Uuid::new_v4();
+
+        let mut tx = pool.begin().await?;
 
         sqlx::query!(
             r#"
@@ -82,7 +82,7 @@ impl Post {
             post_id,
             post.title,
             post.body,
-            post.user_id,
+            user_id,
         )
         .execute(&mut tx)
         .await?;
@@ -108,19 +108,24 @@ impl Post {
         })
     }
 
-    pub async fn update(id: Uuid, post: PostRequest, pool: &PgPool) -> Result<Option<Post>> {
+    pub async fn update(
+        id: Uuid,
+        post: PostRequest,
+        user_id: Uuid,
+        pool: &PgPool,
+    ) -> Result<Option<Post>> {
         let mut tx = pool.begin().await?;
 
         let n_updated = sqlx::query!(
             r#"
             UPDATE posts 
-            SET title = $1, body = $2, user_id = $3
-            WHERE id = $4
+            SET title = $1, body = $2
+            WHERE id = $3 AND user_id = $4
             "#,
             post.title,
             post.body,
-            post.user_id,
             id,
+            user_id,
         )
         .execute(&mut tx)
         .await?
@@ -148,18 +153,20 @@ impl Post {
         })?;
 
         tx.commit().await?;
+
         Ok(Some(post))
     }
 
-    pub async fn delete(id: Uuid, pool: &PgPool) -> Result<u64> {
+    pub async fn delete(id: Uuid, user_id: Uuid, pool: &PgPool) -> Result<u64> {
         let mut tx = pool.begin().await?;
 
         let n_deleted = sqlx::query!(
             r#"
             DELETE FROM posts
-            WHERE id = $1
+            WHERE id = $1 AND user_id = $2
             "#,
             id,
+            user_id,
         )
         .execute(&mut tx)
         .await?
