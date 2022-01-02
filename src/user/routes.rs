@@ -71,7 +71,6 @@ async fn update(
     let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
         Ok(user) => user,
         Err(err) => {
-            error!("Unauthorized error: {}", err);
             return HttpResponse::from_error(err);
         }
     };
@@ -92,7 +91,6 @@ async fn delete(credentials: BearerAuth, db_pool: web::Data<PgPool>) -> impl Res
     let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
         Ok(user) => user,
         Err(err) => {
-            error!("Unauthorized error: {}", err);
             return HttpResponse::from_error(err);
         }
     };
@@ -132,7 +130,6 @@ async fn login(credentials: BasicAuth, db_pool: web::Data<PgPool>) -> impl Respo
     let user = match auth::validate_basic_auth(credentials, db_pool.get_ref()).await {
         Ok(user) => user,
         Err(err) => {
-            error!("Unauthorized error: {}", err);
             return HttpResponse::from_error(err);
         }
     };
