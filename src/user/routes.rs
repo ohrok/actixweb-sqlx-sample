@@ -137,7 +137,7 @@ async fn login(credentials: BasicAuth, db_pool: web::Data<PgPool>) -> impl Respo
         }
     };
 
-    let token = Token::create(&user, db_pool.get_ref()).await;
+    let token = Token::create(user.id, db_pool.get_ref()).await;
     match token {
         Ok(token) => HttpResponse::Ok().json(token),
         Err(err) => {
