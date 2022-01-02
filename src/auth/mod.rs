@@ -26,7 +26,7 @@ pub async fn validate_basic_auth(credentials: BasicAuth, pool: &PgPool) -> Resul
                 Err(AuthenticationError::from(config).into())
             }
         }
-        // TODO: 401エラー以外も返すようにする
+        // TODO: return 500 error when Err?
         Ok(None) | Err(_) => Err(AuthenticationError::from(config).into()),
     }
 }
