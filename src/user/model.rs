@@ -7,10 +7,16 @@ use uuid::Uuid;
 
 // this struct will use to receive user input
 #[derive(Serialize, Deserialize)]
-pub struct UserRequest {
+pub struct UserPostRequest {
     pub name: String,
     pub username: String,
     pub password: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct UserPutRequest {
+    pub name: String,
+    pub username: String,
 }
 
 // this struct will be used to represent database record
@@ -112,7 +118,7 @@ impl User {
         }))
     }
 
-    pub async fn create(user: UserRequest, pool: &PgPool) -> Result<User> {
+    pub async fn create(user: UserPostRequest, pool: &PgPool) -> Result<User> {
         let user_id = Uuid::new_v4();
         let hashed_password = hash(user.password, DEFAULT_COST)?;
 
@@ -152,20 +158,17 @@ impl User {
         })
     }
 
-    pub async fn update(id: Uuid, user: UserRequest, pool: &PgPool) -> Result<Option<User>> {
-        let hashed_password = hash(user.password, DEFAULT_COST)?;
-
+    pub async fn update(id: Uuid, user: UserPutRequest, pool: &PgPool) -> Result<Option<User>> {
         let mut tx = pool.begin().await?;
 
         let n_updated = sqlx::query!(
             r#"
             UPDATE users 
-            SET name = $1, username = $2, password = $3
-            WHERE id = $4
+            SET name = $1, username = $2
+            WHERE id = $3
             "#,
             user.name,
             user.username,
-            hashed_password,
             id,
         )
         .execute(&mut tx)

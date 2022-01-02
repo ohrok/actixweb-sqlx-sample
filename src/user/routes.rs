@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::post::Post;
 use crate::token::Token;
-use crate::user::{User, UserPublic, UserRequest};
+use crate::user::{User, UserPostRequest, UserPublic, UserPutRequest};
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use actix_web_httpauth::extractors::basic::BasicAuth;
 use actix_web_httpauth::extractors::bearer::BearerAuth;
@@ -51,7 +51,7 @@ async fn find(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder
 }
 
 #[post("/users")]
-async fn create(user: web::Json<UserRequest>, db_pool: web::Data<PgPool>) -> impl Responder {
+async fn create(user: web::Json<UserPostRequest>, db_pool: web::Data<PgPool>) -> impl Responder {
     let result = User::create(user.into_inner(), db_pool.get_ref()).await;
     match result {
         Ok(user) => HttpResponse::Ok().json(UserPublic::from(user)),
@@ -65,7 +65,7 @@ async fn create(user: web::Json<UserRequest>, db_pool: web::Data<PgPool>) -> imp
 #[put("/users")]
 async fn update(
     credentials: BearerAuth,
-    new_user: web::Json<UserRequest>,
+    new_user: web::Json<UserPutRequest>,
     db_pool: web::Data<PgPool>,
 ) -> impl Responder {
     let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
