@@ -17,12 +17,7 @@ pub fn init(cfg: &mut web::ServiceConfig) {
 }
 
 #[get("/posts")]
-async fn find_all(credentials: BearerAuth, db_pool: web::Data<PgPool>) -> impl Responder {
-    if let Err(err) = auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
-        error!("Unauthorized error: {}", err);
-        return HttpResponse::from_error(err);
-    };
-
+async fn find_all(db_pool: web::Data<PgPool>) -> impl Responder {
     let result = Post::find_all(db_pool.get_ref()).await;
     match result {
         Ok(posts) => HttpResponse::Ok().json(posts),
@@ -47,8 +42,20 @@ async fn find(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder
 }
 
 #[post("/posts")]
-async fn create(post: web::Json<PostRequest>, db_pool: web::Data<PgPool>) -> impl Responder {
-    let result = Post::create(post.into_inner(), db_pool.get_ref()).await;
+async fn create(
+    credentials: BearerAuth,
+    post: web::Json<PostRequest>,
+    db_pool: web::Data<PgPool>,
+) -> impl Responder {
+    let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
+        Ok(user) => user,
+        Err(err) => {
+            error!("Unauthorized error: {}", err);
+            return HttpResponse::from_error(err);
+        }
+    };
+
+    let result = Post::create(post.into_inner(), user.id, db_pool.get_ref()).await;
     match result {
         Ok(post) => HttpResponse::Ok().json(post),
         Err(err) => {
@@ -60,11 +67,27 @@ async fn create(post: web::Json<PostRequest>, db_pool: web::Data<PgPool>) -> imp
 
 #[put("/posts/{id}")]
 async fn update(
+    credentials: BearerAuth,
     id: web::Path<Uuid>,
     post: web::Json<PostRequest>,
     db_pool: web::Data<PgPool>,
 ) -> impl Responder {
-    let result = Post::update(id.into_inner(), post.into_inner(), db_pool.get_ref()).await;
+    let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
+        Ok(user) => user,
+        Err(err) => {
+            error!("Unauthorized error: {}", err);
+            return HttpResponse::from_error(err);
+        }
+    };
+
+    let result = Post::update(
+        id.into_inner(),
+        post.into_inner(),
+        user.id,
+        db_pool.get_ref(),
+    )
+    .await;
+
     match result {
         Ok(Some(post)) => HttpResponse::Ok().json(post),
         Ok(None) => HttpResponse::NotFound().body("Post not found"),
@@ -76,8 +99,20 @@ async fn update(
 }
 
 #[delete("/posts/{id}")]
-async fn delete(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder {
-    let result = Post::delete(id.into_inner(), db_pool.get_ref()).await;
+async fn delete(
+    credentials: BearerAuth,
+    id: web::Path<Uuid>,
+    db_pool: web::Data<PgPool>,
+) -> impl Responder {
+    let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
+        Ok(user) => user,
+        Err(err) => {
+            error!("Unauthorized error: {}", err);
+            return HttpResponse::from_error(err);
+        }
+    };
+
+    let result = Post::delete(id.into_inner(), user.id, db_pool.get_ref()).await;
     match result {
         Ok(rows_deleted) => {
             if rows_deleted > 0 {
