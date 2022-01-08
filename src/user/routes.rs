@@ -1,21 +1,14 @@
 use crate::auth;
 use crate::post::Post;
 use crate::token::Token;
-use crate::user::{User, UserPostRequest, UserPublic, UserPutRequest};
+use crate::user::{PasswordRequest, User, UserPostRequest, UserPublic, UserPutRequest};
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use actix_web_httpauth::extractors::basic::BasicAuth;
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use bcrypt::verify;
 use log::error;
-use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize)]
-struct PasswordRequest {
-    pub current: String,
-    pub new: String,
-}
 
 pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(find_all)

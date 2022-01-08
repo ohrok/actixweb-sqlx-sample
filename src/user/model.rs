@@ -19,6 +19,12 @@ pub struct UserPutRequest {
     pub username: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct PasswordRequest {
+    pub current: String,
+    pub new: String,
+}
+
 // this struct will be used to represent database record
 #[derive(Serialize, FromRow)]
 pub struct User {
