@@ -1,4 +1,3 @@
-use crate::user::User;
 use actix_web::{Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
 use rand::Rng;
@@ -32,8 +31,8 @@ impl Token {
         }
     }
 
-    pub async fn create(user: &User, pool: &PgPool) -> Result<Token> {
-        let token = Token::new(user.id);
+    pub async fn create(user_id: Uuid, pool: &PgPool) -> Result<Token> {
+        let token = Token::new(user_id);
 
         let mut tx = pool.begin().await?;
         sqlx::query!(

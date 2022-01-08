@@ -1,10 +1,11 @@
 use crate::auth;
 use crate::post::Post;
 use crate::token::Token;
-use crate::user::{User, UserPublic, UserRequest};
+use crate::user::{PasswordRequest, User, UserPostRequest, UserPublic, UserPutRequest};
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use actix_web_httpauth::extractors::basic::BasicAuth;
 use actix_web_httpauth::extractors::bearer::BearerAuth;
+use bcrypt::verify;
 use log::error;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -14,6 +15,7 @@ pub fn init(cfg: &mut web::ServiceConfig) {
         .service(find)
         .service(create)
         .service(update)
+        .service(update_password)
         .service(delete)
         .service(find_posts)
         .service(login);
@@ -51,7 +53,7 @@ async fn find(id: web::Path<Uuid>, db_pool: web::Data<PgPool>) -> impl Responder
 }
 
 #[post("/users")]
-async fn create(user: web::Json<UserRequest>, db_pool: web::Data<PgPool>) -> impl Responder {
+async fn create(user: web::Json<UserPostRequest>, db_pool: web::Data<PgPool>) -> impl Responder {
     let result = User::create(user.into_inner(), db_pool.get_ref()).await;
     match result {
         Ok(user) => HttpResponse::Ok().json(UserPublic::from(user)),
@@ -65,13 +67,12 @@ async fn create(user: web::Json<UserRequest>, db_pool: web::Data<PgPool>) -> imp
 #[put("/users")]
 async fn update(
     credentials: BearerAuth,
-    new_user: web::Json<UserRequest>,
+    new_user: web::Json<UserPutRequest>,
     db_pool: web::Data<PgPool>,
 ) -> impl Responder {
     let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
         Ok(user) => user,
         Err(err) => {
-            error!("Unauthorized error: {}", err);
             return HttpResponse::from_error(err);
         }
     };
@@ -87,12 +88,40 @@ async fn update(
     }
 }
 
+#[put("/users/password")]
+async fn update_password(
+    credentials: BearerAuth,
+    password: web::Json<PasswordRequest>,
+    db_pool: web::Data<PgPool>,
+) -> impl Responder {
+    let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
+        Ok(user) => user,
+        Err(err) => {
+            return HttpResponse::from_error(err);
+        }
+    };
+
+    let valid = verify(&password.current.as_bytes(), &user.password).unwrap_or(false);
+    if !valid {
+        return HttpResponse::BadRequest().body("Current password is incorrect");
+    }
+
+    let result = User::update_password(user.id, &password.new, db_pool.get_ref()).await;
+    match result {
+        Ok(Some(user)) => HttpResponse::Ok().json(UserPublic::from(user)),
+        Ok(None) => HttpResponse::NotFound().body("User not found"),
+        Err(err) => {
+            error!("error updating user: {}", err);
+            HttpResponse::InternalServerError().body("Error trying to update user")
+        }
+    }
+}
+
 #[delete("/users")]
 async fn delete(credentials: BearerAuth, db_pool: web::Data<PgPool>) -> impl Responder {
     let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
         Ok(user) => user,
         Err(err) => {
-            error!("Unauthorized error: {}", err);
             return HttpResponse::from_error(err);
         }
     };
@@ -132,12 +161,11 @@ async fn login(credentials: BasicAuth, db_pool: web::Data<PgPool>) -> impl Respo
     let user = match auth::validate_basic_auth(credentials, db_pool.get_ref()).await {
         Ok(user) => user,
         Err(err) => {
-            error!("Unauthorized error: {}", err);
             return HttpResponse::from_error(err);
         }
     };
 
-    let token = Token::create(&user, db_pool.get_ref()).await;
+    let token = Token::create(user.id, db_pool.get_ref()).await;
     match token {
         Ok(token) => HttpResponse::Ok().json(token),
         Err(err) => {

@@ -7,10 +7,22 @@ use uuid::Uuid;
 
 // this struct will use to receive user input
 #[derive(Serialize, Deserialize)]
-pub struct UserRequest {
+pub struct UserPostRequest {
     pub name: String,
     pub username: String,
     pub password: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct UserPutRequest {
+    pub name: String,
+    pub username: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PasswordRequest {
+    pub current: String,
+    pub new: String,
 }
 
 // this struct will be used to represent database record
@@ -112,7 +124,7 @@ impl User {
         }))
     }
 
-    pub async fn create(user: UserRequest, pool: &PgPool) -> Result<User> {
+    pub async fn create(user: UserPostRequest, pool: &PgPool) -> Result<User> {
         let user_id = Uuid::new_v4();
         let hashed_password = hash(user.password, DEFAULT_COST)?;
 
@@ -152,19 +164,59 @@ impl User {
         })
     }
 
-    pub async fn update(id: Uuid, user: UserRequest, pool: &PgPool) -> Result<Option<User>> {
-        let hashed_password = hash(user.password, DEFAULT_COST)?;
-
+    pub async fn update(id: Uuid, user: UserPutRequest, pool: &PgPool) -> Result<Option<User>> {
         let mut tx = pool.begin().await?;
 
         let n_updated = sqlx::query!(
             r#"
             UPDATE users 
-            SET name = $1, username = $2, password = $3
-            WHERE id = $4
+            SET name = $1, username = $2
+            WHERE id = $3
             "#,
             user.name,
             user.username,
+            id,
+        )
+        .execute(&mut tx)
+        .await?
+        .rows_affected();
+
+        if n_updated == 0 {
+            return Ok(None);
+        }
+
+        let user = sqlx::query!(
+            r#"
+            SELECT id, name, username, password
+            FROM users
+            WHERE id = $1
+            "#,
+            id,
+        )
+        .fetch_one(&mut tx)
+        .await
+        .map(|rec| User {
+            id: rec.id,
+            name: rec.name,
+            username: rec.username,
+            password: rec.password,
+        })?;
+
+        tx.commit().await?;
+
+        Ok(Some(user))
+    }
+
+    pub async fn update_password(id: Uuid, password: &str, pool: &PgPool) -> Result<Option<User>> {
+        let hashed_password = hash(password, DEFAULT_COST)?;
+        let mut tx = pool.begin().await?;
+
+        let n_updated = sqlx::query!(
+            r#"
+            UPDATE users 
+            SET password = $1
+            WHERE id = $2
+            "#,
             hashed_password,
             id,
         )

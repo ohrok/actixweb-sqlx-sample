@@ -50,7 +50,6 @@ async fn create(
     let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
         Ok(user) => user,
         Err(err) => {
-            error!("Unauthorized error: {}", err);
             return HttpResponse::from_error(err);
         }
     };
@@ -75,7 +74,6 @@ async fn update(
     let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
         Ok(user) => user,
         Err(err) => {
-            error!("Unauthorized error: {}", err);
             return HttpResponse::from_error(err);
         }
     };
@@ -107,7 +105,6 @@ async fn delete(
     let user = match auth::validate_bearer_auth(credentials, db_pool.get_ref()).await {
         Ok(user) => user,
         Err(err) => {
-            error!("Unauthorized error: {}", err);
             return HttpResponse::from_error(err);
         }
     };
