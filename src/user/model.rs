@@ -201,6 +201,49 @@ impl User {
         Ok(Some(user))
     }
 
+    pub async fn update_password(id: Uuid, password: &str, pool: &PgPool) -> Result<Option<User>> {
+        let hashed_password = hash(password, DEFAULT_COST)?;
+        let mut tx = pool.begin().await?;
+
+        let n_updated = sqlx::query!(
+            r#"
+            UPDATE users 
+            SET password = $1
+            WHERE id = $2
+            "#,
+            hashed_password,
+            id,
+        )
+        .execute(&mut tx)
+        .await?
+        .rows_affected();
+
+        if n_updated == 0 {
+            return Ok(None);
+        }
+
+        let user = sqlx::query!(
+            r#"
+            SELECT id, name, username, password
+            FROM users
+            WHERE id = $1
+            "#,
+            id,
+        )
+        .fetch_one(&mut tx)
+        .await
+        .map(|rec| User {
+            id: rec.id,
+            name: rec.name,
+            username: rec.username,
+            password: rec.password,
+        })?;
+
+        tx.commit().await?;
+
+        Ok(Some(user))
+    }
+
     pub async fn delete(id: Uuid, pool: &PgPool) -> Result<u64> {
         let mut tx = pool.begin().await?;
 
